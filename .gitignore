@@ -1,0 +1,10 @@
+# Machine-local overrides — never commit these.
+.zshrc.local
+.zshenv.local
+.zprofile.local
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+tags
