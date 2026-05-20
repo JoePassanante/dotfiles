@@ -3,7 +3,17 @@ local act = wezterm.action
 
 local config = wezterm.config_builder()
 
--- ---------- Responsiveness on macOS ----------
+-- ---------- Platform detection ----------
+-- target_triple example: "aarch64-apple-darwin", "x86_64-unknown-linux-gnu",
+-- "x86_64-pc-windows-msvc". Use CMD on macOS to mimic iTerm; CTRL elsewhere
+-- so shortcuts don't collide with the system meta key.
+local target = wezterm.target_triple
+local is_mac = target:find("darwin") ~= nil
+local mod = is_mac and "CMD" or "CTRL"
+local mod_shift = mod .. "|SHIFT"
+local pane_mod = is_mac and "CMD|OPT" or "CTRL|ALT"
+
+-- ---------- Responsiveness ----------
 -- WebGpu uses Metal on macOS and is noticeably snappier than the default OpenGL backend.
 config.front_end = "WebGpu"
 config.webgpu_power_preference = "HighPerformance"
@@ -20,7 +30,9 @@ config.enable_scroll_bar = false
 config.adjust_window_size_when_changing_font_size = false
 
 -- Native macOS fullscreen is laggier than wezterm's own; prefer the native-titlebar-less style.
-config.native_macos_fullscreen_mode = false
+if is_mac then
+	config.native_macos_fullscreen_mode = false
+end
 
 -- ---------- Appearance ----------
 config.font_size = 13.0
@@ -160,43 +172,42 @@ wezterm.on("update-status", function(window, pane)
 end)
 
 -- ---------- iTerm2-style key bindings ----------
--- WezTerm already ships CMD+T (new tab), CMD+W (close), CMD+1..9 (switch),
--- CMD+SHIFT+[ / ] (prev/next tab), CMD+N (new window), CMD+F (search), CMD+C/V.
--- These additions fill in the iTerm shortcuts that aren't default.
+-- On macOS the modifier is CMD; on Linux/Windows it's CTRL. The same shortcut
+-- mappings apply on both, so muscle memory transfers across platforms.
 config.keys = {
-	-- Splits (iTerm: Cmd+D vertical, Cmd+Shift+D horizontal)
-	{ key = "d", mods = "CMD", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-	{ key = "d", mods = "CMD|SHIFT", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
+	-- Splits
+	{ key = "d", mods = mod, action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+	{ key = "d", mods = mod_shift, action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
 
-	-- Close current pane (iTerm: Cmd+W closes the focused pane, then tab)
-	{ key = "w", mods = "CMD", action = act.CloseCurrentPane({ confirm = false }) },
+	-- Close current pane
+	{ key = "w", mods = mod, action = act.CloseCurrentPane({ confirm = false }) },
 
-	-- Pane navigation (iTerm: Cmd+Opt+Arrow)
-	{ key = "LeftArrow", mods = "CMD|OPT", action = act.ActivatePaneDirection("Left") },
-	{ key = "RightArrow", mods = "CMD|OPT", action = act.ActivatePaneDirection("Right") },
-	{ key = "UpArrow", mods = "CMD|OPT", action = act.ActivatePaneDirection("Up") },
-	{ key = "DownArrow", mods = "CMD|OPT", action = act.ActivatePaneDirection("Down") },
+	-- Pane navigation
+	{ key = "LeftArrow", mods = pane_mod, action = act.ActivatePaneDirection("Left") },
+	{ key = "RightArrow", mods = pane_mod, action = act.ActivatePaneDirection("Right") },
+	{ key = "UpArrow", mods = pane_mod, action = act.ActivatePaneDirection("Up") },
+	{ key = "DownArrow", mods = pane_mod, action = act.ActivatePaneDirection("Down") },
 
 	-- Tab navigation
-	{ key = "LeftArrow", mods = "CMD", action = act.ActivateTabRelative(-1) },
-	{ key = "RightArrow", mods = "CMD", action = act.ActivateTabRelative(1) },
+	{ key = "LeftArrow", mods = mod, action = act.ActivateTabRelative(-1) },
+	{ key = "RightArrow", mods = mod, action = act.ActivateTabRelative(1) },
 
-	-- Clear buffer (iTerm: Cmd+K)
-	{ key = "k", mods = "CMD", action = act.ClearScrollback("ScrollbackAndViewport") },
+	-- Clear buffer
+	{ key = "k", mods = mod, action = act.ClearScrollback("ScrollbackAndViewport") },
 
 	-- Quick select: type letters to copy any visible token (URL, hash, path)
-	{ key = "Space", mods = "CMD|SHIFT", action = act.QuickSelect },
+	{ key = "Space", mods = mod_shift, action = act.QuickSelect },
 
 	-- Command palette
-	{ key = "p", mods = "CMD|SHIFT", action = act.ActivateCommandPalette },
+	{ key = "p", mods = mod_shift, action = act.ActivateCommandPalette },
 
-	-- Broadcast input toggle — iTerm's Cmd+Opt+I
-	{ key = "i", mods = "CMD|OPT", action = act.PaneSelect({ mode = "Activate" }) },
+	-- Broadcast input toggle
+	{ key = "i", mods = pane_mod, action = act.PaneSelect({ mode = "Activate" }) },
 
-	-- Rename tab (iTerm: not standard, but handy)
+	-- Rename tab
 	{
 		key = "e",
-		mods = "CMD|SHIFT",
+		mods = mod_shift,
 		action = act.PromptInputLine({
 			description = "Tab name:",
 			action = wezterm.action_callback(function(window, _, line)

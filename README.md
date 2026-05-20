@@ -1,46 +1,45 @@
 # dotfiles
 
-Cross-machine configs for the tools I use daily.
-
-## Layout
-
-Each top-level directory is a [GNU stow](https://www.gnu.org/software/stow/) package whose contents mirror `$HOME`. Stow turns each file inside into a symlink at the matching path.
-
-```
-dotfiles/
-├── git/
-│   └── .gitconfig                  -> ~/.gitconfig
-├── nvim/
-│   └── .config/nvim/               -> ~/.config/nvim/
-├── wezterm/
-│   └── .wezterm.lua                -> ~/.wezterm.lua
-└── zsh/
-    ├── .zshenv                     -> ~/.zshenv
-    ├── .zprofile                   -> ~/.zprofile
-    └── .zshrc                      -> ~/.zshrc
-```
+Cross-platform configs for the tools I use daily.
 
 ## Install
 
+One command per platform. Each script auto-detects what's needed and skips packages that don't apply (e.g. zsh on Windows).
+
+### macOS / Linux
+
 ```sh
-git clone https://github.com/<you>/dotfiles ~/dotfiles
+git clone https://github.com/JoePassanante/dotfiles ~/dotfiles
 cd ~/dotfiles
 ./install.sh
 ```
 
-`install.sh` runs `stow --restow <pkg>` for every top-level directory.
+The script installs `stow` if missing (via Homebrew on mac; `apt`/`dnf`/`pacman`/`zypper`/`apk` on Linux), backs up any existing real files in `$HOME`, then symlinks every package.
 
-To install just one package:
+### Windows (native — no WSL)
 
-```sh
-stow --target="$HOME" wezterm
+```powershell
+git clone https://github.com/JoePassanante/dotfiles $HOME\dotfiles
+cd $HOME\dotfiles
+.\install.ps1
 ```
 
-To uninstall a package (remove the symlinks):
+Symlink creation on Windows requires either **Developer Mode** (Settings → Privacy & security → For developers) **or** running PowerShell as Administrator. The script checks first and tells you which to do.
 
-```sh
-stow --target="$HOME" -D wezterm
-```
+## What gets linked where
+
+| Package  | Linked to (mac / linux)        | Linked to (windows)            |
+| -------- | ------------------------------- | ------------------------------ |
+| wezterm  | `~/.wezterm.lua`                | `$HOME\.wezterm.lua`           |
+| git      | `~/.gitconfig`                  | `$HOME\.gitconfig`             |
+| nvim     | `~/.config/nvim`                | `$env:LOCALAPPDATA\nvim`       |
+| zsh      | `~/.zshrc`, `.zshenv`, `.zprofile` | *(skipped — no native zsh)* |
+
+## Cross-platform behavior
+
+- **`.zshrc`** branches on `$OSTYPE`. Mac-only paths (`/opt/homebrew`, `/Applications/...`, `~/Library/Android/sdk`) only run on mac; linux equivalents run on linux. Tools like `mise` are activated only when present.
+- **`.wezterm.lua`** detects `wezterm.target_triple` and uses `CMD` as the modifier on macOS, `CTRL` on Linux/Windows. Same shortcuts otherwise — muscle memory transfers.
+- **`install.sh`** skips the `zsh` package if zsh isn't installed.
 
 ## Machine-local overrides
 
@@ -50,9 +49,13 @@ stow --target="$HOME" -D wezterm
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
 ```
 
-Put work-specific aliases, internal hostnames, or anything else that shouldn't be public into `~/.zshrc.local`. It's gitignored and stays on the machine.
+Put work-specific aliases, internal hostnames, secrets, etc. into `~/.zshrc.local`. It's gitignored and stays on the machine.
 
-## Requirements
+## Removing the symlinks
 
-- `stow` — `brew install stow` on macOS, `apt install stow` on Debian/Ubuntu.
-- `mise` — referenced by `.zshrc` for runtime version management. Install with `brew install mise` or skip the `mise activate` line.
+```sh
+cd ~/dotfiles
+stow --target="$HOME" -D wezterm zsh git nvim
+```
+
+(Windows: delete the symlinks manually, or restore from `~/.dotfiles-backup-*`.)

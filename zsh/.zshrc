@@ -1,4 +1,3 @@
-export PATH="/opt/homebrew/opt/openssl@3.0/bin:$PATH"
 export GIT_DISCOVERY_ACROSS_FILESYSTEM=1
 
 HISTFILE="$HOME/.zsh_history"
@@ -17,6 +16,61 @@ setopt HIST_SAVE_NO_DUPS         # Don't write duplicate entries in the history 
 setopt HIST_REDUCE_BLANKS        # Remove superfluous blanks before recording entry.
 setopt HIST_VERIFY               # Don't execute immediately upon history expansion.
 setopt HIST_BEEP                 # Beep when accessing nonexistent history.
+
+# Helper: prepend $1 to PATH only if the directory exists.
+path_prepend() { [ -d "$1" ] && export PATH="$1:$PATH"; }
+path_append()  { [ -d "$1" ] && export PATH="$PATH:$1"; }
+
+# Cross-platform paths
+path_prepend "$HOME/.local/bin"
+path_prepend "$HOME/.cargo/bin"
+path_prepend "$HOME/.gitcleanup"
+
+# ---------- macOS-specific ----------
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # Homebrew (Apple Silicon)
+  if [ -d /opt/homebrew/bin ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+    path_prepend "/opt/homebrew/opt/openssl@3.0/bin"
+    if [ -d /opt/homebrew/opt/libffi ]; then
+      export PKG_CONFIG_PATH="/opt/homebrew/opt/libffi/lib/pkgconfig"
+      export LDFLAGS="-L/opt/homebrew/opt/libffi/lib"
+      export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"
+    fi
+  fi
+  # VS Code `code` command
+  path_append "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+  # Android SDK (mac default location)
+  export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+fi
+
+# ---------- Linux-specific ----------
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  # Linuxbrew, if present
+  if [ -d /home/linuxbrew/.linuxbrew/bin ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  fi
+  # Android SDK (linux default location)
+  export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
+fi
+
+# ---------- Android SDK (shared, gated on dir existence) ----------
+if [ -d "$ANDROID_SDK_ROOT" ]; then
+  export ANDROID_HOME=$ANDROID_SDK_ROOT
+  path_append "$ANDROID_SDK_ROOT/emulator"
+  path_append "$ANDROID_SDK_ROOT/tools"
+  path_append "$ANDROID_SDK_ROOT/tools/bin"
+  path_append "$ANDROID_SDK_ROOT/platform-tools"
+  path_append "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
+fi
+
+# ---------- mise (runtime version manager) ----------
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate zsh)"
+  rtx() { mise "$@"; }
+fi
+
+# ---------- Functions ----------
 
 # Run an adb subcommand against every connected device.
 adb-all() {
@@ -42,25 +96,6 @@ addalias() {
     echo "Usage: addalias <alias_name> '<command>'"
   fi
 }
-
-export PATH=/opt/homebrew/bin:$PATH
-export PATH=~/.cargo/bin:$PATH
-export PATH="$HOME/.local/bin:$PATH"
-export PKG_CONFIG_PATH="/opt/homebrew/opt/libffi/lib/pkgconfig"
-export LDFLAGS="-L/opt/homebrew/opt/libffi/lib"
-export CPPFLAGS="-I/opt/homebrew/opt/libffi/include"
-
-# Visual Studio Code (`code` command)
-export PATH="$PATH:/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
-
-# Android SDK
-export ANDROID_SDK_ROOT="$HOME/Library/Android/sdk/"
-export ANDROID_HOME=$ANDROID_SDK_ROOT
-export PATH=$PATH:$ANDROID_SDK_ROOT/emulator
-export PATH=$PATH:$ANDROID_SDK_ROOT/tools
-export PATH=$PATH:$ANDROID_SDK_ROOT/tools/bin
-export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools
-export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
 
 # Interactively prune remote branches whose latest commit is older than $1 (a date).
 clean_branches() {
@@ -92,12 +127,7 @@ csv2md() {
   };
 }
 
-export PATH="$HOME/.gitcleanup:$PATH"
-
-# mise (formerly rtx) — runtime version manager
-eval "$(/opt/homebrew/bin/mise activate zsh)"
-rtx() { mise "$@"; }
-
+# ---------- Aliases ----------
 alias scrcpy='scrcpy'
 alias view-android='scrcpy'
 
