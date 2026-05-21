@@ -86,10 +86,11 @@ local function tree_has_process(info, name)
 	return false
 end
 
--- pane_id -> bool. Refreshed by update-status (~1Hz), read by format-tab-title.
--- A module-level table is the simplest sticky cache; no need to muck with
--- escape sequences or pane user_vars.
+-- pane_id -> bool. Refreshed by update-status (throttled), read by
+-- format-tab-title. A module-level table is the simplest sticky cache.
 local claude_panes = {}
+local last_claude_scan = 0
+local CLAUDE_SCAN_INTERVAL_S = 3 -- claude start/stop is rare; no need to scan every tick
 
 local HOME = os.getenv("HOME") or ""
 
@@ -172,28 +173,32 @@ end)
 -- running anywhere in it (used by format-tab-title), (2) render the left
 -- status bar with the active pane's cwd + process.
 wezterm.on("update-status", function(window, pane)
-	-- (1) Refresh claude_panes for every pane in every window. Process-tree
-	-- walks are O(processes), but pane counts are small and this only runs
-	-- once per second per window, so it's negligible.
-	local seen = {}
-	for _, mux_window in ipairs(wezterm.mux.all_windows()) do
-		for _, mux_tab in ipairs(mux_window:tabs()) do
-			for _, mux_pane in ipairs(mux_tab:panes()) do
-				local pid = mux_pane:pane_id()
-				seen[pid] = true
-				local info = mux_pane:get_foreground_process_info()
-				if tree_has_process(info, "claude") then
-					claude_panes[pid] = true
-				else
-					claude_panes[pid] = nil
+	-- (1) Refresh claude_panes for every pane in every window, but throttle
+	-- the scan since claude start/stop is rare. update-status itself fires
+	-- per-window per-second; this gates the actual process-tree walk.
+	local now = os.time()
+	if now - last_claude_scan >= CLAUDE_SCAN_INTERVAL_S then
+		last_claude_scan = now
+		local seen = {}
+		for _, mux_window in ipairs(wezterm.mux.all_windows()) do
+			for _, mux_tab in ipairs(mux_window:tabs()) do
+				for _, mux_pane in ipairs(mux_tab:panes()) do
+					local pid = mux_pane:pane_id()
+					seen[pid] = true
+					local info = mux_pane:get_foreground_process_info()
+					if tree_has_process(info, "claude") then
+						claude_panes[pid] = true
+					else
+						claude_panes[pid] = nil
+					end
 				end
 			end
 		end
-	end
-	-- Drop entries for panes that no longer exist.
-	for pid in pairs(claude_panes) do
-		if not seen[pid] then
-			claude_panes[pid] = nil
+		-- Drop entries for panes that no longer exist.
+		for pid in pairs(claude_panes) do
+			if not seen[pid] then
+				claude_panes[pid] = nil
+			end
 		end
 	end
 
