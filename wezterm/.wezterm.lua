@@ -60,24 +60,36 @@ config.window_close_confirmation = "NeverPrompt"
 config.hyperlink_rules = wezterm.default_hyperlink_rules()
 
 -- ---------- Tab coloring: highlight tabs running Claude Code ----------
-local function pane_is_running_claude(pane)
-	if not pane then
+-- Claude Code spawns subshells for its Bash tool, so the foreground process
+-- frequently changes from "claude" to "bash"/"node"/whatever — making naive
+-- foreground-name detection blink. Instead, walk the pane's full process
+-- tree (via the mux Pane, which is richer than the PaneInformation passed
+-- to format-tab-title) and check whether *any* descendant is "claude".
+
+-- Recursively scan a process info tree for a process whose basename matches
+-- `name`. wezterm.procinfo trees expose `name` (basename) and `children` (a
+-- map keyed by pid).
+local function tree_has_process(info, name)
+	if info == nil then
 		return false
 	end
-	local proc = pane.foreground_process_name or ""
-	-- foreground_process_name is the full path; take the basename.
-	local basename = proc:match("([^/\\]+)$") or proc
-	if basename == "claude" then
+	if info.name == name then
 		return true
 	end
-	-- Fallback: pane title often reflects the running command (e.g. node-based CLIs
-	-- report "node" as the process name but set the title to "claude").
-	local title = pane.title or ""
-	if title:lower():find("claude", 1, true) then
-		return true
+	if info.children then
+		for _, child in pairs(info.children) do
+			if tree_has_process(child, name) then
+				return true
+			end
+		end
 	end
 	return false
 end
+
+-- pane_id -> bool. Refreshed by update-status (~1Hz), read by format-tab-title.
+-- A module-level table is the simplest sticky cache; no need to muck with
+-- escape sequences or pane user_vars.
+local claude_panes = {}
 
 local HOME = os.getenv("HOME") or ""
 
@@ -135,7 +147,9 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 	end
 	local padded = " " .. title .. " "
 
-	if pane_is_running_claude(tab.active_pane) then
+	-- Read the cached value set by update-status. Lookup is keyed by pane_id;
+	-- format-tab-title is hot so we avoid the process-tree walk here.
+	if claude_panes[tab.active_pane.pane_id] then
 		-- Claude tab: warm orange background, dark text.
 		local bg = tab.is_active and "#d97706" or "#92400e"
 		if hover and not tab.is_active then
@@ -153,9 +167,37 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 	return padded
 end)
 
--- Status bar: full ~/path [proc] of the active pane, on the left side of the
--- (now always-visible, bottom) tab bar. Never truncated.
+-- update-status fires roughly once per second per window. We use it for two
+-- things: (1) re-scan every pane's process tree and stash whether claude is
+-- running anywhere in it (used by format-tab-title), (2) render the left
+-- status bar with the active pane's cwd + process.
 wezterm.on("update-status", function(window, pane)
+	-- (1) Refresh claude_panes for every pane in every window. Process-tree
+	-- walks are O(processes), but pane counts are small and this only runs
+	-- once per second per window, so it's negligible.
+	local seen = {}
+	for _, mux_window in ipairs(wezterm.mux.all_windows()) do
+		for _, mux_tab in ipairs(mux_window:tabs()) do
+			for _, mux_pane in ipairs(mux_tab:panes()) do
+				local pid = mux_pane:pane_id()
+				seen[pid] = true
+				local info = mux_pane:get_foreground_process_info()
+				if tree_has_process(info, "claude") then
+					claude_panes[pid] = true
+				else
+					claude_panes[pid] = nil
+				end
+			end
+		end
+	end
+	-- Drop entries for panes that no longer exist.
+	for pid in pairs(claude_panes) do
+		if not seen[pid] then
+			claude_panes[pid] = nil
+		end
+	end
+
+	-- (2) Left status: cwd + process of the active pane.
 	local path = cwd_path(pane)
 	local text = ""
 	if path then
@@ -170,6 +212,45 @@ wezterm.on("update-status", function(window, pane)
 		{ Text = " " .. text .. " " },
 	}))
 end)
+
+-- ---------- Session restore (resurrect.wezterm) ----------
+-- Saves window/tab/pane layout + cwd + (optionally) scrollback to disk so
+-- after a crash or reboot you can fuzzy-load the last session. Lazy-cloned
+-- on first launch; subsequent launches load from cache.
+local resurrect_ok, resurrect = pcall(function()
+	return wezterm.plugin.require("https://github.com/MLFlexer/resurrect.wezterm")
+end)
+
+if resurrect_ok then
+	-- Periodic auto-save every 5 minutes. Workspaces only — saving windows
+	-- and tabs separately mostly produces noise in the fuzzy picker.
+	resurrect.state_manager.periodic_save({
+		interval_seconds = 5 * 60,
+		save_workspaces = true,
+		save_windows = false,
+		save_tabs = false,
+	})
+	-- Cap scrollback per pane so save files don't balloon.
+	resurrect.state_manager.set_max_nlines(2000)
+
+	-- Auto-restore the most recent "current" workspace on GUI startup.
+	-- This requires that a current state exists on disk; periodic_save plus
+	-- the workspace-focus hook below keep it fresh.
+	wezterm.on("gui-startup", resurrect.state_manager.resurrect_on_gui_startup)
+	wezterm.on("window-focus-changed", function(_, _)
+		local ws = wezterm.mux.get_active_workspace()
+		if ws and ws ~= "" then
+			resurrect.state_manager.write_current_state(ws, "workspace")
+		end
+	end)
+end
+
+local restore_opts = {
+	relative = true,
+	restore_text = true,
+	resize_window = false, -- safer with our custom window_decorations/padding
+	on_pane_restore = resurrect_ok and resurrect.tab_state.default_on_pane_restore or nil,
+}
 
 -- ---------- iTerm2-style key bindings ----------
 -- On macOS the modifier is CMD; on Linux/Windows it's CTRL. The same shortcut
@@ -216,6 +297,42 @@ config.keys = {
 				end
 			end),
 		}),
+	},
+
+	-- Session save / fuzzy restore (resurrect.wezterm)
+	{
+		key = "s",
+		mods = mod_shift,
+		action = wezterm.action_callback(function(_, _)
+			if not resurrect_ok then
+				return
+			end
+			resurrect.state_manager.save_state(resurrect.workspace_state.get_workspace_state())
+		end),
+	},
+	{
+		key = "r",
+		mods = mod_shift,
+		action = wezterm.action_callback(function(win, pane)
+			if not resurrect_ok then
+				return
+			end
+			resurrect.fuzzy_loader.fuzzy_load(win, pane, function(id, _)
+				local kind = string.match(id, "^([^/]+)")
+				local name = string.match(id, "([^/]+)$")
+				name = string.match(name, "(.+)%..+$")
+				if kind == "workspace" then
+					local state = resurrect.state_manager.load_state(name, "workspace")
+					resurrect.workspace_state.restore_workspace(state, restore_opts)
+				elseif kind == "window" then
+					local state = resurrect.state_manager.load_state(name, "window")
+					resurrect.window_state.restore_window(pane:window(), state, restore_opts)
+				elseif kind == "tab" then
+					local state = resurrect.state_manager.load_state(name, "tab")
+					resurrect.tab_state.restore_tab(pane:tab(), state, restore_opts)
+				end
+			end)
+		end),
 	},
 }
 
