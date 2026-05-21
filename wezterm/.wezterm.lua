@@ -35,6 +35,14 @@ if is_mac then
 end
 
 -- ---------- Appearance ----------
+-- JetBrainsMono Nerd Font: ligatures + nerd-font icons used by nvim plugins.
+-- Listed fonts after the first act as fallbacks for missing glyphs (CJK,
+-- emoji, etc.) using wezterm's built-in defaults.
+config.font = wezterm.font_with_fallback({
+	"JetBrainsMono Nerd Font",
+	"JetBrains Mono", -- non-NerdFont fallback if the nerd variant is missing
+	"Symbols Nerd Font Mono",
+})
 config.font_size = 13.0
 config.window_decorations = "RESIZE"
 config.hide_tab_bar_if_only_one_tab = false
@@ -86,11 +94,11 @@ local function tree_has_process(info, name)
 	return false
 end
 
--- pane_id -> bool. Refreshed by update-status (throttled), read by
--- format-tab-title. A module-level table is the simplest sticky cache.
-local claude_panes = {}
-local last_claude_scan = 0
-local CLAUDE_SCAN_INTERVAL_S = 3 -- claude start/stop is rare; no need to scan every tick
+-- pane_id -> "claude" | "ssh" | nil. Refreshed by update-status (throttled),
+-- read by format-tab-title. A module-level table is the simplest sticky cache.
+local pane_role = {}
+local last_pane_scan = 0
+local PANE_SCAN_INTERVAL_S = 3 -- role transitions are rare; no need to scan every tick
 
 local HOME = os.getenv("HOME") or ""
 
@@ -148,10 +156,11 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 	end
 	local padded = " " .. title .. " "
 
-	-- Read the cached value set by update-status. Lookup is keyed by pane_id;
+	-- Read the cached role set by update-status. Lookup is keyed by pane_id;
 	-- format-tab-title is hot so we avoid the process-tree walk here.
-	if claude_panes[tab.active_pane.pane_id] then
-		-- Claude tab: warm orange background, dark text.
+	local role = pane_role[tab.active_pane.pane_id]
+	if role == "claude" then
+		-- Warm orange background, dark text.
 		local bg = tab.is_active and "#d97706" or "#92400e"
 		if hover and not tab.is_active then
 			bg = "#b45309"
@@ -159,6 +168,18 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 		return {
 			{ Background = { Color = bg } },
 			{ Foreground = { Color = "#1c1917" } },
+			{ Attribute = { Intensity = "Bold" } },
+			{ Text = padded },
+		}
+	elseif role == "ssh" then
+		-- Cool blue background, light text.
+		local bg = tab.is_active and "#2563eb" or "#1e3a8a"
+		if hover and not tab.is_active then
+			bg = "#1d4ed8"
+		end
+		return {
+			{ Background = { Color = bg } },
+			{ Foreground = { Color = "#f1f5f9" } },
 			{ Attribute = { Intensity = "Bold" } },
 			{ Text = padded },
 		}
@@ -173,12 +194,14 @@ end)
 -- running anywhere in it (used by format-tab-title), (2) render the left
 -- status bar with the active pane's cwd + process.
 wezterm.on("update-status", function(window, pane)
-	-- (1) Refresh claude_panes for every pane in every window, but throttle
-	-- the scan since claude start/stop is rare. update-status itself fires
+	-- (1) Refresh pane_role for every pane in every window, but throttle
+	-- the scan since transitions are rare. update-status itself fires
 	-- per-window per-second; this gates the actual process-tree walk.
+	-- Claude wins over ssh if both are present (claude is the more salient
+	-- signal — most claude sessions are local).
 	local now = os.time()
-	if now - last_claude_scan >= CLAUDE_SCAN_INTERVAL_S then
-		last_claude_scan = now
+	if now - last_pane_scan >= PANE_SCAN_INTERVAL_S then
+		last_pane_scan = now
 		local seen = {}
 		for _, mux_window in ipairs(wezterm.mux.all_windows()) do
 			for _, mux_tab in ipairs(mux_window:tabs()) do
@@ -187,17 +210,19 @@ wezterm.on("update-status", function(window, pane)
 					seen[pid] = true
 					local info = mux_pane:get_foreground_process_info()
 					if tree_has_process(info, "claude") then
-						claude_panes[pid] = true
+						pane_role[pid] = "claude"
+					elseif tree_has_process(info, "ssh") then
+						pane_role[pid] = "ssh"
 					else
-						claude_panes[pid] = nil
+						pane_role[pid] = nil
 					end
 				end
 			end
 		end
 		-- Drop entries for panes that no longer exist.
-		for pid in pairs(claude_panes) do
+		for pid in pairs(pane_role) do
 			if not seen[pid] then
-				claude_panes[pid] = nil
+				pane_role[pid] = nil
 			end
 		end
 	end

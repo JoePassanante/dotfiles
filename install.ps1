@@ -42,14 +42,48 @@ This shell cannot create symbolic links. Either:
 "@
 }
 
+# ------------------------------------------------------- ensure JetBrainsMono Nerd Font
+function Test-FontInstalled {
+    $userFont = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+    $sysFont  = Join-Path $env:WINDIR 'Fonts'
+    return ((Test-Path $userFont) -and (Get-ChildItem $userFont -Filter 'JetBrainsMonoNerdFont*' -ErrorAction SilentlyContinue)) `
+        -or ((Test-Path $sysFont)  -and (Get-ChildItem $sysFont  -Filter 'JetBrainsMonoNerdFont*' -ErrorAction SilentlyContinue))
+}
+if (-not (Test-FontInstalled)) {
+    Write-Host "==> Installing JetBrainsMono Nerd Font"
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id DEVCOM.JetBrainsMonoNerdFont -e --silent --accept-package-agreements --accept-source-agreements
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop bucket add nerd-fonts 2>$null
+        scoop install nerd-fonts/JetBrainsMono-NF
+    } else {
+        Write-Warning "Neither winget nor scoop found. Install JetBrainsMono Nerd Font manually from https://www.nerdfonts.com/font-downloads"
+    }
+}
+
+# ----------------------------------------------------------------- ensure mise
+if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
+    Write-Host "==> Installing mise"
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id jdx.mise -e --silent --accept-package-agreements --accept-source-agreements
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop install mise
+    } else {
+        Write-Warning "Neither winget nor scoop found. Install mise manually from https://mise.jdx.dev/"
+    }
+}
+
 # Pairs of (repo-relative source, absolute destination).
 $home_path = $HOME
 $nvim_dest = Join-Path $env:LOCALAPPDATA 'nvim'
+# mise on Windows reads ~\AppData\Roaming\mise\config.toml.
+$mise_dest = Join-Path $env:APPDATA 'mise\config.toml'
 
 $links = @(
-    @{ Src = (Join-Path $repo 'wezterm\.wezterm.lua');  Dst = (Join-Path $home_path '.wezterm.lua') },
-    @{ Src = (Join-Path $repo 'git\.gitconfig');        Dst = (Join-Path $home_path '.gitconfig') },
-    @{ Src = (Join-Path $repo 'nvim\.config\nvim');     Dst = $nvim_dest }
+    @{ Src = (Join-Path $repo 'wezterm\.wezterm.lua');         Dst = (Join-Path $home_path '.wezterm.lua') },
+    @{ Src = (Join-Path $repo 'git\.gitconfig');               Dst = (Join-Path $home_path '.gitconfig') },
+    @{ Src = (Join-Path $repo 'nvim\.config\nvim');            Dst = $nvim_dest },
+    @{ Src = (Join-Path $repo 'mise\.config\mise\config.toml'); Dst = $mise_dest }
 )
 
 $backupDir = Join-Path $home_path (".dotfiles-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))

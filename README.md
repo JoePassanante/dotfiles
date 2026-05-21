@@ -28,12 +28,15 @@ Symlink creation on Windows requires either **Developer Mode** (Settings → Pri
 
 ## What gets linked where
 
-| Package  | Linked to (mac / linux)        | Linked to (windows)            |
-| -------- | ------------------------------- | ------------------------------ |
-| wezterm  | `~/.wezterm.lua`                | `$HOME\.wezterm.lua`           |
-| git      | `~/.gitconfig`                  | `$HOME\.gitconfig`             |
-| nvim     | `~/.config/nvim`                | `$env:LOCALAPPDATA\nvim`       |
-| zsh      | `~/.zshrc`, `.zshenv`, `.zprofile` | *(skipped — no native zsh)* |
+| Package  | Linked to (mac / linux)             | Linked to (windows)               |
+| -------- | ----------------------------------- | --------------------------------- |
+| wezterm  | `~/.wezterm.lua`                    | `$HOME\.wezterm.lua`              |
+| git      | `~/.gitconfig`                      | `$HOME\.gitconfig`                |
+| nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`          |
+| mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`   |
+| zsh      | `~/.zshrc`, `.zshenv`, `.zprofile`  | *(skipped — no native zsh)*       |
+
+The installer also installs **JetBrainsMono Nerd Font** (used by wezterm and nvim plugins) and **mise** if missing.
 
 ## Cross-platform behavior
 
