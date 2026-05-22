@@ -94,11 +94,26 @@ local function tree_has_process(info, name)
 	return false
 end
 
--- pane_id -> "claude" | "ssh" | nil. Refreshed by update-status (throttled),
--- read by format-tab-title. A module-level table is the simplest sticky cache.
+-- pane_id -> "claude" | "ssh" | "busy" | nil. Refreshed by update-status
+-- (throttled), read by format-tab-title.
 local pane_role = {}
 local last_pane_scan = 0
 local PANE_SCAN_INTERVAL_S = 3 -- role transitions are rare; no need to scan every tick
+
+-- Foreground process names that mean "shell at prompt = idle, no color".
+-- Anything else implies a running command and gets the "busy" green tint.
+local SHELL_NAMES = {
+	zsh = true,
+	bash = true,
+	fish = true,
+	sh = true,
+	dash = true,
+	ksh = true,
+	-- Windows shells, in case wezterm runs there:
+	["pwsh.exe"] = true,
+	["powershell.exe"] = true,
+	["cmd.exe"] = true,
+}
 
 local HOME = os.getenv("HOME") or ""
 
@@ -183,6 +198,17 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 			{ Attribute = { Intensity = "Bold" } },
 			{ Text = padded },
 		}
+	elseif role == "busy" then
+		-- Green background, light text — something is running in the foreground.
+		local bg = tab.is_active and "#16a34a" or "#14532d"
+		if hover and not tab.is_active then
+			bg = "#15803d"
+		end
+		return {
+			{ Background = { Color = bg } },
+			{ Foreground = { Color = "#f0fdf4" } },
+			{ Text = padded },
+		}
 	end
 
 	-- Default: let wezterm's normal tab colors apply.
@@ -213,6 +239,10 @@ wezterm.on("update-status", function(window, pane)
 						pane_role[pid] = "claude"
 					elseif tree_has_process(info, "ssh") then
 						pane_role[pid] = "ssh"
+					elseif info and not SHELL_NAMES[info.name or ""] then
+						-- Foreground is something other than the shell —
+						-- a command is running. Tag as busy.
+						pane_role[pid] = "busy"
 					else
 						pane_role[pid] = nil
 					end
