@@ -91,6 +91,27 @@ ensure_nerd_font() {
 }
 ensure_nerd_font
 
+# ----------------------------------------------------------- ensure zsh plugins
+# zsh-autosuggestions and zsh-syntax-highlighting. Sourced from .zshrc which
+# probes a few well-known install paths.
+ensure_zsh_plugins() {
+  if ! command -v zsh >/dev/null 2>&1; then return; fi
+  echo "==> Ensuring zsh plugins (autosuggestions + syntax-highlighting)"
+  if [ "$OS" = mac ]; then
+    brew list zsh-autosuggestions     >/dev/null 2>&1 || brew install zsh-autosuggestions
+    brew list zsh-syntax-highlighting >/dev/null 2>&1 || brew install zsh-syntax-highlighting
+  else
+    if   command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y zsh-autosuggestions zsh-syntax-highlighting
+    elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y zsh-autosuggestions zsh-syntax-highlighting
+    elif command -v pacman  >/dev/null 2>&1; then sudo pacman -S --noconfirm zsh-autosuggestions zsh-syntax-highlighting
+    elif command -v zypper  >/dev/null 2>&1; then sudo zypper install -y zsh-autosuggestions zsh-syntax-highlighting
+    elif command -v apk     >/dev/null 2>&1; then sudo apk add zsh-autosuggestions zsh-syntax-highlighting
+    else echo "  No supported package manager — skipping zsh plugins."
+    fi
+  fi
+}
+ensure_zsh_plugins
+
 # -------------------------------------------------------- back up real files
 # stow refuses to overwrite a real file with a symlink. Move any conflicting
 # real files (not symlinks) out of the way before stowing.

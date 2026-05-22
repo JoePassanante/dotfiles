@@ -131,6 +131,28 @@ csv2md() {
 alias scrcpy='scrcpy'
 alias view-android='scrcpy'
 
+# ---------- Plugins ----------
+# zsh-autosuggestions: ghost-grey command suggestions from history.
+# Press → (Right Arrow) or End to accept.
+for f in \
+  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+do
+  [ -r "$f" ] && source "$f" && break
+done
+
+# zsh-syntax-highlighting: green for valid commands, red for invalid, plus
+# string/option/redirect highlighting. Per its README this MUST be the last
+# plugin sourced (it hooks into the line editor).
+for f in \
+  /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+do
+  [ -r "$f" ] && source "$f" && break
+done
+
 # Source machine-local overrides (work-specific aliases, internal hostnames, secrets).
 # This file is intentionally not tracked in git.
 [[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
