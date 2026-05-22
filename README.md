@@ -28,15 +28,21 @@ Symlink creation on Windows requires either **Developer Mode** (Settings → Pri
 
 ## What gets linked where
 
-| Package  | Linked to (mac / linux)             | Linked to (windows)               |
-| -------- | ----------------------------------- | --------------------------------- |
-| wezterm  | `~/.wezterm.lua`                    | `$HOME\.wezterm.lua`              |
-| git      | `~/.gitconfig`                      | `$HOME\.gitconfig`                |
-| nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`          |
-| mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`   |
-| zsh      | `~/.zshrc`, `.zshenv`, `.zprofile`  | *(skipped — no native zsh)*       |
+| Package  | Linked to (mac / linux)             | Linked to (windows)                                   |
+| -------- | ----------------------------------- | ----------------------------------------------------- |
+| wezterm  | `~/.wezterm.lua`                    | `$HOME\.wezterm.lua`                                  |
+| git      | `~/.gitconfig`                      | `$HOME\.gitconfig`                                    |
+| nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`                              |
+| mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`                       |
+| zsh      | `~/.zshrc`, `.zshenv`, `.zprofile`  | *(skipped — no native zsh)*                           |
+| pwsh     | *(skipped — zsh is the unix shell)* | `$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` |
 
 The installer also installs **JetBrainsMono Nerd Font** (used by wezterm and nvim plugins) and **mise** if missing.
+
+### Shell experience
+
+- **mac / linux**: `zsh-autosuggestions` (ghost-grey history completions, `→` to accept) and `zsh-syntax-highlighting` (commands turn green if valid, red if not). Both auto-installed.
+- **windows (pwsh)**: PSReadLine prediction view + colors give the same feel; `Ctrl+R` runs PSFzf fuzzy history; `oh-my-posh` provides the prompt; mise activated automatically. wezterm spawns `pwsh.exe` by default on Windows so this all takes effect immediately.
 
 ## Cross-platform behavior
 

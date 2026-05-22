@@ -9,9 +9,17 @@ local config = wezterm.config_builder()
 -- so shortcuts don't collide with the system meta key.
 local target = wezterm.target_triple
 local is_mac = target:find("darwin") ~= nil
+local is_windows = target:find("windows") ~= nil
 local mod = is_mac and "CMD" or "CTRL"
 local mod_shift = mod .. "|SHIFT"
 local pane_mod = is_mac and "CMD|OPT" or "CTRL|ALT"
+
+-- On Windows, default to PowerShell 7 (pwsh) — that's where our profile and
+-- PSReadLine config live. Falls back to whatever wezterm picks if pwsh
+-- isn't installed.
+if is_windows then
+	config.default_prog = { "pwsh.exe", "-NoLogo" }
+end
 
 -- ---------- Responsiveness ----------
 -- WebGpu uses Metal on macOS and is noticeably snappier than the default OpenGL backend.
@@ -63,6 +71,9 @@ config.notification_handling = "AlwaysShow"
 config.scrollback_lines = 50000
 config.exit_behavior = "CloseOnCleanExit"
 config.window_close_confirmation = "NeverPrompt"
+-- In alternate-screen apps (nvim, less, man), don't translate mouse wheel
+-- into arrow keys; let the app see the actual scroll events instead.
+config.alternate_buffer_wheel_scroll_speed = 0
 
 -- ---------- Hyperlinks / quick select ----------
 config.hyperlink_rules = wezterm.default_hyperlink_rules()

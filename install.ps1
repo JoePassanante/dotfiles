@@ -73,17 +73,66 @@ if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
     }
 }
 
+# ------------------------------------------------------ ensure PowerShell 7 (pwsh)
+# Windows ships PowerShell 5.1 by default. We want 7.x for modern PSReadLine.
+if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+    Write-Host "==> Installing PowerShell 7"
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id Microsoft.PowerShell -e --silent --accept-package-agreements --accept-source-agreements
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop install pwsh
+    } else {
+        Write-Warning "Install PowerShell 7 manually from https://aka.ms/powershell"
+    }
+}
+
+# ----------------------------------- ensure pwsh modules: PSReadLine, PSFzf, oh-my-posh
+# Install for the current user only — no admin required.
+function Ensure-Module($name) {
+    if (-not (Get-Module -ListAvailable -Name $name)) {
+        Write-Host "==> Installing PowerShell module: $name"
+        Install-Module -Name $name -Scope CurrentUser -Force -AcceptLicense -ErrorAction SilentlyContinue
+    }
+}
+Ensure-Module PSReadLine
+Ensure-Module PSFzf
+
+# oh-my-posh ships as a winget/scoop package, not a PS module.
+if (-not (Get-Command oh-my-posh -ErrorAction SilentlyContinue)) {
+    Write-Host "==> Installing oh-my-posh"
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id JanDeDobbeleer.OhMyPosh -e --silent --accept-package-agreements --accept-source-agreements
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop install oh-my-posh
+    }
+}
+
+# fzf binary (PSFzf depends on it)
+if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+    Write-Host "==> Installing fzf"
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        winget install --id junegunn.fzf -e --silent --accept-package-agreements --accept-source-agreements
+    } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        scoop install fzf
+    }
+}
+
 # Pairs of (repo-relative source, absolute destination).
 $home_path = $HOME
 $nvim_dest = Join-Path $env:LOCALAPPDATA 'nvim'
 # mise on Windows reads ~\AppData\Roaming\mise\config.toml.
 $mise_dest = Join-Path $env:APPDATA 'mise\config.toml'
+# pwsh 7 profile path: $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1.
+# (Windows PowerShell 5.1 uses WindowsPowerShell\, which we deliberately don't
+# touch — pwsh 7 is what we configure.)
+$pwsh_dest = Join-Path $home_path 'Documents\PowerShell\Microsoft.PowerShell_profile.ps1'
 
 $links = @(
     @{ Src = (Join-Path $repo 'wezterm\.wezterm.lua');         Dst = (Join-Path $home_path '.wezterm.lua') },
     @{ Src = (Join-Path $repo 'git\.gitconfig');               Dst = (Join-Path $home_path '.gitconfig') },
     @{ Src = (Join-Path $repo 'nvim\.config\nvim');            Dst = $nvim_dest },
-    @{ Src = (Join-Path $repo 'mise\.config\mise\config.toml'); Dst = $mise_dest }
+    @{ Src = (Join-Path $repo 'mise\.config\mise\config.toml'); Dst = $mise_dest },
+    @{ Src = (Join-Path $repo 'pwsh\Documents\PowerShell\Microsoft.PowerShell_profile.ps1'); Dst = $pwsh_dest }
 )
 
 $backupDir = Join-Path $home_path (".dotfiles-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -134,4 +183,5 @@ Write-Host "Done."
 if ($backedUp) {
     Write-Host "Existing files were moved to: $backupDir"
 }
-Write-Host "Note: zsh package skipped on Windows."
+Write-Host "Note: zsh package skipped on Windows. Use pwsh 7 instead — its profile is now linked."
+Write-Host "Set wezterm to launch pwsh by default by editing wezterm if needed."
