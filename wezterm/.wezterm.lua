@@ -198,6 +198,17 @@ wezterm.on("format-tab-title", function(tab, _tabs, _panes, _config, hover, max_
 			{ Attribute = { Intensity = "Bold" } },
 			{ Text = padded },
 		}
+	elseif role == "nvim" then
+		-- Purple background, light text — editor session.
+		local bg = tab.is_active and "#9333ea" or "#581c87"
+		if hover and not tab.is_active then
+			bg = "#7e22ce"
+		end
+		return {
+			{ Background = { Color = bg } },
+			{ Foreground = { Color = "#faf5ff" } },
+			{ Text = padded },
+		}
 	elseif role == "busy" then
 		-- Green background, light text — something is running in the foreground.
 		local bg = tab.is_active and "#16a34a" or "#14532d"
@@ -239,6 +250,8 @@ wezterm.on("update-status", function(window, pane)
 						pane_role[pid] = "claude"
 					elseif tree_has_process(info, "ssh") then
 						pane_role[pid] = "ssh"
+					elseif tree_has_process(info, "nvim") then
+						pane_role[pid] = "nvim"
 					elseif info and not SHELL_NAMES[info.name or ""] then
 						-- Foreground is something other than the shell —
 						-- a command is running. Tag as busy.
