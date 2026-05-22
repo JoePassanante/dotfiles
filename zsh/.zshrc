@@ -127,6 +127,20 @@ csv2md() {
   };
 }
 
+# SSH into a host and attach to (or create) a tmux session named "main".
+# Falls back gracefully if tmux isn't installed on the remote.
+#   ssht somehost                 # attach/create tmux session "main"
+#   ssht somehost work            # attach/create tmux session "work"
+ssht() {
+  if [ $# -lt 1 ]; then
+    echo "Usage: ssht <host> [session-name]"
+    return 1
+  fi
+  local host="$1"
+  local session="${2:-main}"
+  ssh -t "$host" "tmux new-session -A -s $(printf %q "$session") || \$SHELL -l"
+}
+
 # ---------- Aliases ----------
 alias scrcpy='scrcpy'
 alias view-android='scrcpy'

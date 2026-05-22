@@ -63,6 +63,20 @@ function la { Get-ChildItem -Force -Hidden @args }
 function .. { Set-Location .. }
 function ...  { Set-Location ../.. }
 
+# SSH into a host and attach to (or create) a tmux session.
+# Falls back to a normal login shell if tmux isn't on the remote.
+#   ssht somehost                 # attach/create session "main"
+#   ssht somehost work            # attach/create session "work"
+function ssht {
+    param(
+        [Parameter(Mandatory)] [string] $Host_,
+        [string] $Session = 'main'
+    )
+    # Quote the session name for the remote shell.
+    $remote = "tmux new-session -A -s '$Session' || `$SHELL -l"
+    ssh -t $Host_ $remote
+}
+
 # Source machine-local overrides if present (work-specific paths, secrets).
 $localProfile = Join-Path $HOME 'Microsoft.PowerShell_profile.local.ps1'
 if (Test-Path $localProfile) { . $localProfile }
