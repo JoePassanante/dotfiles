@@ -43,16 +43,37 @@ brew_install() {
 }
 
 # ---------------------------------------------------------------- ensure brew
+# We expect the user to install brew themselves so they can read the upstream
+# warnings, choose where it lives, and answer its prompts. Bailing out also
+# avoids running the brew install one-liner inside `set -e` in a sub-shell,
+# which has a history of exiting half-installed.
 ensure_brew() {
   if [ "$HAS_BREW" = 1 ]; then return; fi
-  echo "==> Homebrew not found — installing"
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   if [ "$OS" = mac ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+    cat >&2 <<'EOF'
+ERROR: Homebrew is not installed.
+
+Install it first, then re-run this script:
+
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+
+See https://brew.sh for details.
+EOF
   else
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    cat >&2 <<'EOF'
+ERROR: Linuxbrew is not installed.
+
+Install it first, then re-run this script:
+
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+See https://docs.brew.sh/Homebrew-on-Linux for details.
+On Amazon dev desktops, see https://w.amazon.com/bin/view/Main/LinuxBrewOnCloudDesktop/.
+EOF
   fi
-  HAS_BREW=1
+  exit 1
 }
 
 # ---------------------------------------------------------------- ensure stow
