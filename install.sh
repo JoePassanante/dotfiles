@@ -74,6 +74,20 @@ ensure_mise() {
 }
 ensure_mise
 
+# ------------------------------------- ensure CLI tools nvim & shell expect
+# tree-sitter: nvim-treesitter parser builds
+# ripgrep, fd: telescope live_grep / find_files
+# lazygit: neogit alternative, used by some plugins
+# gcc: fallback C compiler for treesitter parsers without prebuilt binaries
+# fzf: PSFzf-equivalent fuzzy history/file search
+ensure_dev_tools() {
+  ensure_brew
+  for pkg in tree-sitter ripgrep fd lazygit gcc fzf; do
+    brew_install "$pkg"
+  done
+}
+ensure_dev_tools
+
 # ------------------------------------------------- ensure JetBrainsMono Nerd Font
 # Used by .wezterm.lua and nvim plugins (neo-tree, gitsigns, etc.).
 ensure_nerd_font() {
