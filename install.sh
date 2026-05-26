@@ -19,49 +19,58 @@ esac
 
 echo "==> OS: $OS"
 
+# Make Linuxbrew visible to this script if it's installed but not yet on PATH
+# (common right after first install on a fresh CDD).
+if [ "$OS" = linux ] && [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+# ---------------------------------------------- pick a package installer once
+# Prefer brew (Homebrew on mac, Linuxbrew on linux) since it's the only
+# manager that has every tool we need (stow, mise, zsh-autosuggestions,
+# zsh-syntax-highlighting). On distros where brew isn't installed and we
+# can't use it (e.g. Amazon Linux 2023, where EPEL is officially discouraged),
+# fall back to the native manager only for tools it actually has.
+HAS_BREW=0
+command -v brew >/dev/null 2>&1 && HAS_BREW=1
+
+# Returns 0 if a brew formula is available in any tap.
+# Cheaper than `brew search`: checks only the formula list cache.
+brew_install() {
+  local pkg="$1"
+  brew list "$pkg" >/dev/null 2>&1 && return 0
+  brew install "$pkg"
+}
+
+# ---------------------------------------------------------------- ensure brew
+ensure_brew() {
+  if [ "$HAS_BREW" = 1 ]; then return; fi
+  echo "==> Homebrew not found — installing"
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  if [ "$OS" = mac ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  else
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  fi
+  HAS_BREW=1
+}
+
 # ---------------------------------------------------------------- ensure stow
 ensure_stow() {
   if command -v stow >/dev/null 2>&1; then return; fi
   echo "==> stow not found — installing"
-  if [ "$OS" = mac ]; then
-    if ! command -v brew >/dev/null 2>&1; then
-      echo "Installing Homebrew first..."
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-      eval "$(/opt/homebrew/bin/brew shellenv)"
-    fi
-    brew install stow
-  else
-    if   command -v apt-get >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y stow
-    elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y stow
-    elif command -v pacman  >/dev/null 2>&1; then sudo pacman -S --noconfirm stow
-    elif command -v zypper  >/dev/null 2>&1; then sudo zypper install -y stow
-    elif command -v apk     >/dev/null 2>&1; then sudo apk add stow
-    else echo "Could not detect package manager. Install GNU stow manually, then re-run."; exit 1
-    fi
-  fi
+  ensure_brew
+  brew_install stow
 }
 
 ensure_stow
 
 # ----------------------------------------------------------- ensure mise
-# mise manages node/python/rust versions. The mise package below pins them.
 ensure_mise() {
   if command -v mise >/dev/null 2>&1; then return; fi
   echo "==> mise not found — installing"
-  if [ "$OS" = mac ]; then
-    brew install mise
-  else
-    if   command -v apt-get >/dev/null 2>&1; then
-      # Ubuntu/Debian: official mise repo.
-      sudo install -dm 755 /etc/apt/keyrings
-      curl -fsSL https://mise.jdx.dev/gpg-key.pub | sudo gpg --dearmor -o /etc/apt/keyrings/mise-archive-keyring.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg arch=$(dpkg --print-architecture)] https://mise.jdx.dev/deb stable main" | sudo tee /etc/apt/sources.list.d/mise.list
-      sudo apt-get update && sudo apt-get install -y mise
-    elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y mise || curl https://mise.run | sh
-    elif command -v pacman  >/dev/null 2>&1; then sudo pacman -S --noconfirm mise
-    else curl https://mise.run | sh
-    fi
-  fi
+  ensure_brew
+  brew_install mise
 }
 ensure_mise
 
@@ -97,18 +106,9 @@ ensure_nerd_font
 ensure_zsh_plugins() {
   if ! command -v zsh >/dev/null 2>&1; then return; fi
   echo "==> Ensuring zsh plugins (autosuggestions + syntax-highlighting)"
-  if [ "$OS" = mac ]; then
-    brew list zsh-autosuggestions     >/dev/null 2>&1 || brew install zsh-autosuggestions
-    brew list zsh-syntax-highlighting >/dev/null 2>&1 || brew install zsh-syntax-highlighting
-  else
-    if   command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y zsh-autosuggestions zsh-syntax-highlighting
-    elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y zsh-autosuggestions zsh-syntax-highlighting
-    elif command -v pacman  >/dev/null 2>&1; then sudo pacman -S --noconfirm zsh-autosuggestions zsh-syntax-highlighting
-    elif command -v zypper  >/dev/null 2>&1; then sudo zypper install -y zsh-autosuggestions zsh-syntax-highlighting
-    elif command -v apk     >/dev/null 2>&1; then sudo apk add zsh-autosuggestions zsh-syntax-highlighting
-    else echo "  No supported package manager — skipping zsh plugins."
-    fi
-  fi
+  ensure_brew
+  brew_install zsh-autosuggestions
+  brew_install zsh-syntax-highlighting
 }
 ensure_zsh_plugins
 
