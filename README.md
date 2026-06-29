@@ -31,6 +31,7 @@ Symlink creation on Windows requires either **Developer Mode** (Settings → Pri
 | Package  | Linked to (mac / linux)             | Linked to (windows)                                   |
 | -------- | ----------------------------------- | ----------------------------------------------------- |
 | wezterm  | `~/.wezterm.lua`                    | `$HOME\.wezterm.lua`                                  |
+| tmux     | `~/.tmux.conf`                      | *(skipped — no tmux on Windows)*                      |
 | git      | `~/.gitconfig`                      | `$HOME\.gitconfig`                                    |
 | nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`                              |
 | mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`                       |
@@ -64,7 +65,7 @@ Put work-specific aliases, internal hostnames, secrets, etc. into `~/.zshrc.loca
 
 ```sh
 cd ~/dotfiles
-stow --target="$HOME" -D wezterm zsh git nvim
+stow --target="$HOME" -D wezterm zsh git nvim tmux
 ```
 
 (Windows: delete the symlinks manually, or restore from `~/.dotfiles-backup-*`.)
