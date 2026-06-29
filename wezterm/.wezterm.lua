@@ -71,9 +71,23 @@ config.notification_handling = "AlwaysShow"
 config.scrollback_lines = 50000
 config.exit_behavior = "CloseOnCleanExit"
 config.window_close_confirmation = "NeverPrompt"
--- In alternate-screen apps (nvim, less, man), don't translate mouse wheel
--- into arrow keys; let the app see the actual scroll events instead.
-config.alternate_buffer_wheel_scroll_speed = 0
+
+-- Override mouse wheel so it always scrolls WezTerm's scrollback buffer
+-- instead of forwarding escape sequences to the running application.
+config.mouse_bindings = {
+	{
+		event = { Down = { streak = 1, button = { WheelUp = 1 } } },
+		mods = "NONE",
+		action = act.ScrollByLine(-3),
+		mouse_reporting = true,
+	},
+	{
+		event = { Down = { streak = 1, button = { WheelDown = 1 } } },
+		mods = "NONE",
+		action = act.ScrollByLine(3),
+		mouse_reporting = true,
+	},
+}
 
 -- ---------- Hyperlinks / quick select ----------
 config.hyperlink_rules = wezterm.default_hyperlink_rules()
