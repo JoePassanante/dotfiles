@@ -32,7 +32,6 @@ Symlink creation on Windows requires either **Developer Mode** (Settings → Pri
 | -------- | ----------------------------------- | ----------------------------------------------------- |
 | wezterm  | `~/.wezterm.lua`                    | `$HOME\.wezterm.lua`                                  |
 | tmux     | `~/.tmux.conf`                      | *(skipped — no tmux on Windows)*                      |
-| git      | `~/.gitconfig`                      | `$HOME\.gitconfig`                                    |
 | nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`                              |
 | mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`                       |
 | zsh      | `~/.zshrc`, `.zshenv`, `.zprofile`  | *(skipped — no native zsh)*                           |
@@ -61,11 +60,13 @@ The installer also installs **JetBrainsMono Nerd Font** (used by wezterm and nvi
 
 Put work-specific aliases, internal hostnames, secrets, etc. into `~/.zshrc.local`. It's gitignored and stays on the machine.
 
+Git config (`~/.gitconfig`) is intentionally **not** managed here — identity (name/email) differs per machine (personal vs work), so it stays machine-local.
+
 ## Removing the symlinks
 
 ```sh
 cd ~/dotfiles
-stow --target="$HOME" -D wezterm zsh git nvim tmux
+stow --target="$HOME" -D wezterm zsh nvim tmux
 ```
 
 (Windows: delete the symlinks manually, or restore from `~/.dotfiles-backup-*`.)

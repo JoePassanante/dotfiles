@@ -165,7 +165,6 @@ echo "==> Checking for existing real files in \$HOME..."
 backup_one "$HOME/.zshrc"
 backup_one "$HOME/.zshenv"
 backup_one "$HOME/.zprofile"
-backup_one "$HOME/.gitconfig"
 backup_one "$HOME/.wezterm.lua"
 backup_one "$HOME/.tmux.conf"
 backup_one "$HOME/.config/nvim"
@@ -173,7 +172,7 @@ backup_one "$HOME/.config/mise/config.toml"
 
 # ---------------------------------------------------------- decide packages
 # zsh package only useful where zsh is the real shell.
-PACKAGES=(wezterm git nvim mise tmux)
+PACKAGES=(wezterm nvim mise tmux)
 if command -v zsh >/dev/null 2>&1; then
   PACKAGES+=(zsh)
 else

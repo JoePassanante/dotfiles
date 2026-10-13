@@ -129,7 +129,6 @@ $pwsh_dest = Join-Path $home_path 'Documents\PowerShell\Microsoft.PowerShell_pro
 
 $links = @(
     @{ Src = (Join-Path $repo 'wezterm\.wezterm.lua');         Dst = (Join-Path $home_path '.wezterm.lua') },
-    @{ Src = (Join-Path $repo 'git\.gitconfig');               Dst = (Join-Path $home_path '.gitconfig') },
     @{ Src = (Join-Path $repo 'nvim\.config\nvim');            Dst = $nvim_dest },
     @{ Src = (Join-Path $repo 'mise\.config\mise\config.toml'); Dst = $mise_dest },
     @{ Src = (Join-Path $repo 'pwsh\Documents\PowerShell\Microsoft.PowerShell_profile.ps1'); Dst = $pwsh_dest }
