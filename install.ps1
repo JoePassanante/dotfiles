@@ -122,6 +122,9 @@ $home_path = $HOME
 $nvim_dest = Join-Path $env:LOCALAPPDATA 'nvim'
 # mise on Windows reads ~\AppData\Roaming\mise\config.toml.
 $mise_dest = Join-Path $env:APPDATA 'mise\config.toml'
+# herdr on Windows reads ~\AppData\Roaming\herdr\config.toml. Only config.toml
+# is linked — the rest of that dir is runtime state (sockets, logs, sessions).
+$herdr_dest = Join-Path $env:APPDATA 'herdr\config.toml'
 # pwsh 7 profile path: $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1.
 # (Windows PowerShell 5.1 uses WindowsPowerShell\, which we deliberately don't
 # touch — pwsh 7 is what we configure.)
@@ -131,6 +134,7 @@ $links = @(
     @{ Src = (Join-Path $repo 'wezterm\.wezterm.lua');         Dst = (Join-Path $home_path '.wezterm.lua') },
     @{ Src = (Join-Path $repo 'nvim\.config\nvim');            Dst = $nvim_dest },
     @{ Src = (Join-Path $repo 'mise\.config\mise\config.toml'); Dst = $mise_dest },
+    @{ Src = (Join-Path $repo 'herdr\.config\herdr\config.toml'); Dst = $herdr_dest },
     @{ Src = (Join-Path $repo 'pwsh\Documents\PowerShell\Microsoft.PowerShell_profile.ps1'); Dst = $pwsh_dest }
 )
 

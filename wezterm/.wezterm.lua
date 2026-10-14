@@ -331,10 +331,10 @@ if resurrect_ok then
 	-- Cap scrollback per pane so save files don't balloon.
 	resurrect.state_manager.set_max_nlines(2000)
 
-	-- Auto-restore the most recent "current" workspace on GUI startup.
-	-- This requires that a current state exists on disk; periodic_save plus
-	-- the workspace-focus hook below keep it fresh.
-	wezterm.on("gui-startup", resurrect.state_manager.resurrect_on_gui_startup)
+	-- Deliberately NOT auto-restoring on gui-startup: a fresh launch should
+	-- open a clean window, not resurrect last session's tabs. The periodic
+	-- save + focus hook still keep a current state on disk so the manual
+	-- fuzzy-load keybinding below can bring a session back on demand.
 	wezterm.on("window-focus-changed", function(_, _)
 		local ws = wezterm.mux.get_active_workspace()
 		if ws and ws ~= "" then

@@ -34,6 +34,7 @@ Symlink creation on Windows requires either **Developer Mode** (Settings → Pri
 | tmux     | `~/.tmux.conf`                      | *(skipped — no tmux on Windows)*                      |
 | nvim     | `~/.config/nvim`                    | `$env:LOCALAPPDATA\nvim`                              |
 | mise     | `~/.config/mise/config.toml`        | `$env:APPDATA\mise\config.toml`                       |
+| herdr    | `~/.config/herdr/config.toml`       | `$env:APPDATA\herdr\config.toml`                      |
 | zsh      | `~/.zshrc`, `.zshenv`, `.zprofile`  | *(skipped — no native zsh)*                           |
 | pwsh     | *(skipped — zsh is the unix shell)* | `$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` |
 
@@ -66,7 +67,7 @@ Git config (`~/.gitconfig`) is intentionally **not** managed here — identity (
 
 ```sh
 cd ~/dotfiles
-stow --target="$HOME" -D wezterm zsh nvim tmux
+stow --target="$HOME" -D wezterm zsh nvim mise herdr tmux
 ```
 
 (Windows: delete the symlinks manually, or restore from `~/.dotfiles-backup-*`.)
